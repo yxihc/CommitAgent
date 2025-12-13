@@ -1,70 +1,192 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
-const vscode = require("vscode");
+const vscode = __importStar(require("vscode"));
+const i18n_1 = require("./utils/i18n");
+const git_1 = require("./utils/git");
+const commit_1 = require("./services/commit");
+const ai_manager_1 = require("./services/ai-manager");
+const settings_panel_1 = require("./webview/settings-panel");
 /**
  * 插件激活时调用的方法
  * @param context 扩展上下文，用于注册命令和释放资源
  */
 function activate(context) {
-    console.log('恭喜，您的扩展 "ai-generate-commit" 已激活！');
+    console.log((0, i18n_1.localize)("extension.activated", '恭喜，您的扩展 "ai-generate-commit" 已激活！'));
     // 注册命令 'ai-generate-commit.generate'
-    // 该命令在 package.json 中被绑定到了 SCM (源代码管理) 面板的标题栏菜单
     const disposable = vscode.commands.registerCommand("ai-generate-commit.generate", async (...args) => {
-        // 获取 VS Code 内置的 Git 扩展
-        const gitExtension = vscode.extensions.getExtension("vscode.git");
-        if (!gitExtension) {
-            vscode.window.showErrorMessage("未找到 Git 扩展");
+        const git = (0, git_1.getGitAPI)();
+        if (!git) {
+            vscode.window.showErrorMessage((0, i18n_1.localize)("git.extension.not.found", "未找到 Git 扩展"));
             return;
         }
-        // 获取 Git API v1
-        const git = gitExtension.exports.getAPI(1);
-        if (git.repositories.length === 0) {
-            vscode.window.showErrorMessage("未找到 Git 仓库");
+        const repo = (0, git_1.getSelectedRepository)(git, args);
+        if (!repo) {
+            vscode.window.showErrorMessage((0, i18n_1.localize)("git.repo.not.found", "未找到 Git 仓库"));
             return;
         }
-        // 默认选择第一个仓库
-        let repo = git.repositories[0];
-        // 尝试根据上下文参数匹配正确的仓库
-        // 当从 SCM 标题栏点击按钮时，VS Code 可能会传递当前上下文对象
-        if (args.length > 0) {
-            const arg = args[0];
-            // 如果参数中包含 rootUri，则尝试通过 rootUri 匹配仓库
-            if (arg && arg.rootUri) {
-                const found = git.repositories.find((r) => r.rootUri.toString() === arg.rootUri.toString());
-                if (found) {
-                    repo = found;
-                }
+        await (0, commit_1.generateCommitMessage)(repo);
+    });
+    // 注册命令 'ai-generate-commit.selectAndGenerate'
+    const selectAndGenerateDisposable = vscode.commands.registerCommand("ai-generate-commit.selectAndGenerate", async (...args) => {
+        const git = (0, git_1.getGitAPI)();
+        if (!git) {
+            vscode.window.showErrorMessage((0, i18n_1.localize)("git.extension.not.found", "未找到 Git 扩展"));
+            return;
+        }
+        const repo = (0, git_1.getSelectedRepository)(git, args);
+        if (!repo) {
+            vscode.window.showErrorMessage((0, i18n_1.localize)("git.repo.not.found", "未找到 Git 仓库"));
+            return;
+        }
+        const providers = ai_manager_1.AIManager.getProviders();
+        if (providers.length === 0) {
+            vscode.window.showErrorMessage((0, i18n_1.localize)("no.providers", "No AI providers configured."));
+            return;
+        }
+        const items = [];
+        for (const provider of providers) {
+            items.push({
+                label: provider.name,
+                kind: vscode.QuickPickItemKind.Separator,
+                providerId: provider.id,
+                modelId: "",
+            });
+            for (const model of provider.models) {
+                items.push({
+                    label: model.name || model.id,
+                    description: provider.name,
+                    providerId: provider.id,
+                    modelId: model.id,
+                });
             }
         }
-        // 获取当前输入框中的文本
-        const currentText = repo.inputBox.value;
-        // 在源代码管理 (Source Control) 面板显示进度条
-        // location: vscode.ProgressLocation.SourceControl 指定进度条显示在 SCM 面板顶部
-        await vscode.window.withProgress({
-            location: vscode.ProgressLocation.SourceControl,
-            title: "AI 正在处理...",
-        }, async (progress) => {
-            // 第一阶段：读取输入
-            progress.report({ message: "正在读取输入..." });
-            // 模拟处理时间
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-            // 第二阶段：生成提交信息
-            progress.report({ message: "正在生成提交信息..." });
-            await new Promise((resolve) => setTimeout(resolve, 1500));
-            // 更新输入框的逻辑
-            // 这里我们只是追加一个模拟字符串，实际应用中可以替换为调用 AI 接口的逻辑
-            // 如果输入框为空，则提供一个默认的提交信息
-            const processedText = currentText.trim()
-                ? `${currentText}\n\n(由 AI 代理处理)`
-                : "feat: 实现 AI 自动生成提交信息功能";
-            // 将处理后的文本赋值回 Git 输入框
-            repo.inputBox.value = processedText;
+        const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: (0, i18n_1.localize)("select.model", "Select AI Model"),
         });
+        if (selected) {
+            await (0, commit_1.generateCommitMessage)(repo, {
+                providerId: selected.providerId,
+                modelId: selected.modelId,
+            });
+        }
     });
-    // 将命令注册添加到订阅列表中，以便在插件停用时正确释放资源
-    context.subscriptions.push(disposable);
+    // 注册命令 'ai-generate-commit.fetchModels'
+    const fetchModelsDisposable = vscode.commands.registerCommand("ai-generate-commit.fetchModels", async () => {
+        const providers = ai_manager_1.AIManager.getProviders();
+        const items = providers.map((p) => ({
+            label: p.name,
+            description: p.baseUrl,
+            provider: p,
+        }));
+        items.push({
+            label: "$(plus) New Provider",
+            description: "Fetch from a new URL",
+            provider: null,
+        });
+        const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: "Select a provider to fetch models for",
+        });
+        if (!selected)
+            return;
+        let provider = selected.provider;
+        if (!provider) {
+            const baseUrl = await vscode.window.showInputBox({
+                prompt: "Enter Base URL (e.g. https://api.openai.com/v1)",
+                value: "https://",
+            });
+            if (!baseUrl)
+                return;
+            const apiKey = await vscode.window.showInputBox({
+                prompt: "Enter API Key",
+                password: true,
+            });
+            if (!apiKey)
+                return;
+            provider = {
+                id: "temp",
+                name: "Temp",
+                type: "openai-compatible",
+                apiKey,
+                baseUrl,
+                models: [],
+            };
+        }
+        try {
+            await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: "Fetching models...",
+                cancellable: false,
+            }, async () => {
+                const models = await ai_manager_1.AIManager.fetchModels(provider);
+                if (models.length === 0) {
+                    vscode.window.showInformationMessage("No models found.");
+                    return;
+                }
+                const actions = ["Copy to Clipboard"];
+                if (selected.provider) {
+                    actions.push("Update Config");
+                }
+                const action = await vscode.window.showInformationMessage(`Found ${models.length} models.`, ...actions);
+                if (action === "Copy to Clipboard") {
+                    await vscode.env.clipboard.writeText(JSON.stringify(models, null, 2));
+                    vscode.window.showInformationMessage("Models copied to clipboard.");
+                }
+                else if (action === "Update Config" && selected.provider) {
+                    const config = vscode.workspace.getConfiguration("ai-generate-commit");
+                    const currentProviders = config.get("providers") || [];
+                    const index = currentProviders.findIndex((p) => p.id === selected.provider.id);
+                    if (index !== -1) {
+                        currentProviders[index].models = models.map((m) => m.id);
+                        await config.update("providers", currentProviders, vscode.ConfigurationTarget.Global);
+                        vscode.window.showInformationMessage(`Updated models for ${selected.provider.name}.`);
+                    }
+                }
+            });
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Failed to fetch models: ${error.message}`);
+        }
+    });
+    // 注册命令 'ai-generate-commit.configure'
+    const configureDisposable = vscode.commands.registerCommand("ai-generate-commit.configure", () => {
+        settings_panel_1.SettingsPanel.createOrShow(context.extensionUri);
+    });
+    context.subscriptions.push(disposable, selectAndGenerateDisposable, fetchModelsDisposable, configureDisposable);
 }
 /**
  * 插件停用时调用的方法

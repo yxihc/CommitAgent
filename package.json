@@ -1,7 +1,7 @@
 {
   "name": "ai-generate-commit",
-  "displayName": "AI Generate Commit",
-  "description": "Generate commit messages using AI",
+  "displayName": "%displayName%",
+  "description": "%description%",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.90.0"
@@ -15,17 +15,75 @@
     "commands": [
       {
         "command": "ai-generate-commit.generate",
-        "title": "AI Generate Commit",
+        "title": "%command.title%",
         "icon": "$(sparkle)"
+      },
+      {
+        "command": "ai-generate-commit.selectAndGenerate",
+        "title": "Select Model & Generate Commit",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "ai-generate-commit.fetchModels",
+        "title": "Fetch AI Models from Provider"
+      },
+      {
+        "command": "ai-generate-commit.configure",
+        "title": "Configure AI Providers",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
       "scm/title": [
         {
           "command": "ai-generate-commit.generate",
+          "group": "navigation",
+          "when": "config.ai-generate-commit.defaultProviderId != ''"
+        },
+        {
+          "command": "ai-generate-commit.selectAndGenerate",
+          "group": "navigation"
+        },
+        {
+          "command": "ai-generate-commit.configure",
           "group": "navigation"
         }
       ]
+    },
+    "configuration": {
+      "title": "AI Generate Commit",
+      "properties": {
+        "ai-generate-commit.openConfigurationPage": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "%config.openConfigurationPage%"
+        },
+        "ai-generate-commit.providers": {
+          "type": "array",
+          "default": [],
+          "scope": "application"
+        },
+        "ai-generate-commit.defaultProviderId": {
+          "type": "string",
+          "default": "",
+          "scope": "application"
+        },
+        "ai-generate-commit.defaultModel": {
+          "type": "string",
+          "default": "",
+          "scope": "application"
+        },
+        "ai-generate-commit.language": {
+          "type": "string",
+          "default": "zh-CN",
+          "scope": "application"
+        },
+        "ai-generate-commit.customPrompt": {
+          "type": "string",
+          "default": "",
+          "scope": "application"
+        }
+      }
     }
   },
   "scripts": {
@@ -34,8 +92,16 @@
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/vscode": "^1.90.0",
     "@types/node": "20.x",
+    "@types/vscode": "^1.90.0",
     "typescript": "^5.4.5"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.86",
+    "@ai-sdk/openai-compatible": "^1.0.29",
+    "ai": "^5.0.113",
+    "simple-git": "^3.30.0",
+    "vscode-nls": "^5.2.0",
+    "watch": "^1.0.2"
   }
 }

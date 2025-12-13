@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Commit Settings</title>
+    <script src="{{vueUri}}"></script>
+    <style>
+      :root {
+        --container-padding: 20px;
+        --card-bg: var(--vscode-editor-background);
+        --card-border: var(--vscode-widget-border);
+        --input-bg: var(--vscode-input-background);
+        --input-fg: var(--vscode-input-foreground);
+        --input-border: var(--vscode-input-border);
+        --button-bg: var(--vscode-button-background);
+        --button-fg: var(--vscode-button-foreground);
+        --button-hover: var(--vscode-button-hoverBackground);
+        --success-color: #22c55e;
+        --icon-color: var(--vscode-descriptionForeground);
+      }
+      body {
+        font-family: var(--vscode-font-family);
+        padding: var(--container-padding);
+        color: var(--vscode-foreground);
+        background-color: var(--vscode-editor-background);
+        margin: 0;
+      }
+      .container { max-width: 800px; margin: 0 auto; }
+      
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--vscode-widget-border);
+      }
+      h2 { margin: 0; font-size: 18px; font-weight: 500; }
+
+      /* Provider Card */
+      .provider-card {
+        background: var(--vscode-editor-widget-background);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+      }
+      .provider-card.collapsed { padding: 0; }
+      
+      /* Card Header with Toggle */
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      .provider-card.collapsed .card-header {
+        margin-bottom: 0;
+        padding: 16px 20px;
+        cursor: pointer;
+      }
+      .provider-card.collapsed .card-header:hover {
+        background: var(--vscode-list-hoverBackground);
+        border-radius: 8px;
+      }
+      .card-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+        font-size: 15px;
+      }
+      .card-title .expand-arrow {
+        font-size: 10px;
+        transition: transform 0.2s;
+        color: var(--vscode-descriptionForeground);
+      }
+      .card-title .expand-arrow.expanded { transform: rotate(90deg); }
+      .card-title .settings-icon {
+        cursor: pointer;
+        opacity: 0.6;
+        font-size: 14px;
+      }
+      .card-title .settings-icon:hover { opacity: 1; }
+      
+      /* Card Summary (collapsed state) */
+      .card-summary {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 12px;
+        color: var(--vscode-descriptionForeground);
+      }
+      .card-summary .summary-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .card-summary .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--vscode-descriptionForeground);
+      }
+      .card-summary .status-dot.active { background: var(--success-color); }
+      
+      .card-body {
+        transition: all 0.3s ease;
+      }
+      
+      /* Toggle Switch */
+      .toggle-switch {
+        position: relative;
+        width: 44px;
+        height: 24px;
+        background: var(--vscode-input-background);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: background 0.3s;
+        border: 1px solid var(--input-border);
+      }
+      .toggle-switch.active {
+        background: var(--success-color);
+        border-color: var(--success-color);
+      }
+      .toggle-switch::after {
+        content: '';
+        position: absolute;
+        width: 18px;
+        height: 18px;
+        background: white;
+        border-radius: 50%;
+        top: 2px;
+        left: 2px;
+        transition: transform 0.3s;
+      }
+      .toggle-switch.active::after {
+        transform: translateX(20px);
+      }
+
+      /* Form Elements */
+      .form-group { margin-bottom: 16px; }
+      .form-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        font-size: 13px;
+        color: var(--vscode-foreground);
+      }
+      .form-label-text { font-weight: 500; }
+      .form-label-hint {
+        font-size: 11px;
+        color: var(--vscode-descriptionForeground);
+      }
+      
+      .input-wrapper {
+        display: flex;
+        align-items: center;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .input-wrapper input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 10px 12px;
+        color: var(--input-fg);
+        font-size: 13px;
+        outline: none;
+      }
+      .input-wrapper:focus-within {
+        border-color: var(--vscode-focusBorder);
+      }
+      
+      .input-icon-btn {
+        background: none;
+        border: none;
+        padding: 8px 10px;
+        cursor: pointer;
+        color: var(--icon-color);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .input-icon-btn:hover { color: var(--vscode-foreground); }
+      
+      .input-action-btn {
+        background: var(--vscode-button-secondaryBackground);
+        border: none;
+        border-left: 1px solid var(--input-border);
+        padding: 8px 16px;
+        cursor: pointer;
+        color: var(--vscode-button-secondaryForeground);
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      .input-action-btn:hover {
+        background: var(--vscode-button-secondaryHoverBackground);
+      }
+
+      input, select {
+        width: 100%;
+        padding: 10px 12px;
+        background: var(--input-bg);
+        color: var(--input-fg);
+        border: 1px solid var(--input-border);
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 13px;
+      }
+      input:focus, select:focus {
+        outline: 1px solid var(--vscode-focusBorder);
+        border-color: var(--vscode-focusBorder);
+      }
+
+      /* Models Section */
+      .models-section {
+        margin-top: 16px;
+      }
+      .models-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .models-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .models-count {
+        background: var(--vscode-badge-background);
+        color: var(--vscode-badge-foreground);
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+      }
+      .models-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .models-search input {
+        width: 180px;
+        padding: 6px 10px;
+        font-size: 12px;
+      }
+      
+      /* Model Tree */
+      .model-tree {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      .model-group-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        background: var(--vscode-list-hoverBackground);
+      }
+      .model-group-header:hover {
+        background: var(--vscode-list-activeSelectionBackground);
+      }
+      .expand-icon {
+        transition: transform 0.2s;
+        font-size: 10px;
+      }
+      .expand-icon.expanded { transform: rotate(90deg); }
+      
+      .model-list { padding: 0; }
+      .model-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 12px 10px 32px;
+        border-bottom: 1px solid var(--vscode-widget-border);
+      }
+      .model-item:last-child { border-bottom: none; }
+      .model-item:hover { background: var(--vscode-list-hoverBackground); }
+      
+      .model-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .model-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--vscode-button-background);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+      }
+      .model-name { font-weight: 500; font-size: 13px; }
+      
+
+      
+      .model-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .model-action-btn {
+        background: none;
+        border: none;
+        padding: 4px;
+        cursor: pointer;
+        color: var(--icon-color);
+        font-size: 14px;
+      }
+      .model-action-btn:hover { color: var(--vscode-foreground); }
+      .model-action-btn.delete:hover { color: var(--vscode-errorForeground); }
+
+      /* Bottom Actions */
+      .card-footer {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--vscode-widget-border);
+      }
+      
+      button {
+        background: var(--button-bg);
+        color: var(--button-fg);
+        border: none;
+        padding: 8px 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      button:hover { background: var(--button-hover); }
+      button.secondary {
+        background: var(--vscode-button-secondaryBackground);
+        color: var(--vscode-button-secondaryForeground);
+      }
+      button.secondary:hover {
+        background: var(--vscode-button-secondaryHoverBackground);
+      }
+      button.danger { background: var(--vscode-errorForeground); color: white; }
+
+      .global-settings {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--vscode-widget-border);
+      }
+      .footer {
+        margin-top: 32px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        position: sticky;
+        bottom: 20px;
+        background: var(--vscode-editor-background);
+        padding: 10px 0;
+        border-top: 1px solid var(--vscode-widget-border);
+      }
+
+      .list-enter-active, .list-leave-active { transition: all 0.3s ease; }
+      .list-enter-from, .list-leave-to { opacity: 0; transform: translateY(-10px); }
+
+      /* Toast Message */
+      .toast {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 6px;
+        font-size: 13px;
+        z-index: 2000;
+        animation: slideIn 0.3s ease;
+      }
+      .toast.success {
+        background: #22c55e;
+        color: white;
+      }
+      .toast.error {
+        background: var(--vscode-errorForeground);
+        color: white;
+      }
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+
+      /* Add Model Modal */
+      .modal-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: var(--vscode-editor-background);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+      .modal-content {
+        background: var(--vscode-editor-widget-background);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        width: 400px;
+        max-width: 90vw;
+      }
+      .modal-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--vscode-widget-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .modal-header h3 { margin: 0; font-size: 15px; }
+      .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 18px;
+        padding: 4px;
+        color: var(--vscode-foreground);
+      }
+      .modal-body { padding: 16px; }
+      .modal-footer {
+        padding: 16px;
+        border-top: 1px solid var(--vscode-widget-border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
+      /* Manage Models Modal */
+      .modal-content.manage-modal {
+        width: 700px;
+        max-width: 95vw;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .manage-modal .modal-body {
+        flex: 1;
+        overflow: hidden;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+      }
+      .manage-modal .manage-model-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 0;
+      }
+      .manage-search {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--vscode-widget-border);
+      }
+      .manage-search .search-input {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 6px;
+        padding: 0 12px;
+      }
+      .manage-search .search-input input {
+        border: none;
+        background: transparent;
+        padding: 10px 8px;
+        width: 100%;
+      }
+      .manage-search .search-input input:focus { outline: none; }
+      .manage-search .search-icon { color: var(--vscode-descriptionForeground); }
+      .manage-search .action-btns {
+        display: flex;
+        gap: 4px;
+      }
+      .manage-search .action-btns button {
+        padding: 8px 10px;
+        background: var(--vscode-button-secondaryBackground);
+      }
+      
+
+      
+      /* Model Groups */
+      .manage-model-list {
+        padding: 8px 0;
+      }
+      .manage-group {
+        border-bottom: 1px solid var(--vscode-widget-border);
+      }
+      .manage-group:last-child { border-bottom: none; }
+      .manage-group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 16px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+      }
+      .manage-group-header:hover { background: var(--vscode-list-hoverBackground); }
+      .manage-group-header .group-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .manage-group-header .group-count {
+        background: var(--success-color);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: normal;
+      }
+      .manage-group-header .group-add {
+        font-size: 18px;
+        color: var(--vscode-descriptionForeground);
+        cursor: pointer;
+        padding: 0 4px;
+      }
+      .manage-group-header .group-add:hover { color: var(--vscode-foreground); }
+      
+      /* Model Items in Manage Modal */
+      .manage-model-item {
+        display: flex;
+        align-items: flex-start;
+        padding: 12px 16px 12px 40px;
+        gap: 12px;
+        border-bottom: 1px solid var(--vscode-widget-border);
+      }
+      .manage-model-item:last-child { border-bottom: none; }
+      .manage-model-item:hover { background: var(--vscode-list-hoverBackground); }
+      .manage-model-item .model-logo {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 14px;
+        flex-shrink: 0;
+      }
+      .manage-model-item .model-content {
+        flex: 1;
+        min-width: 0;
+      }
+      .manage-model-item .model-title {
+        font-weight: 500;
+        font-size: 13px;
+      }
+
+
+      .manage-model-item .model-add-btn {
+        font-size: 20px;
+        color: var(--vscode-descriptionForeground);
+        cursor: pointer;
+        padding: 4px;
+        flex-shrink: 0;
+      }
+      .manage-model-item .model-add-btn:hover { color: var(--vscode-foreground); }
+      .manage-model-item .model-add-btn.added { color: var(--success-color); }
+      
+      /* Loading State */
+      .manage-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        color: var(--vscode-descriptionForeground);
+      }
+      .manage-loading .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid var(--vscode-widget-border);
+        border-top-color: var(--success-color);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 12px;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div id="app" class="container">
+      <!-- Toast Message -->
+      <div v-if="toast.show" :class="['toast', toast.type]">{{ toast.message }}</div>
+
+      <div class="header">
+        <h2>{{ t.title }}</h2>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <select v-model="uiLanguage" style="width: auto; padding: 6px 10px; font-size: 12px;">
+            <option value="zh-CN">🇨🇳 中文</option>
+            <option value="en">🇺🇸 English</option>
+          </select>
+          <button @click="addProvider"><span>+</span> {{ t.addProvider }}</button>
+        </div>
+      </div>
+
+      <div v-if="providers.length === 0" style="text-align: center; padding: 40px; color: var(--vscode-descriptionForeground);">
+        {{ t.noProviders }}
+      </div>
+
+      <transition-group name="list" tag="div">
+        <div v-for="(provider, index) in providers" :key="provider.id" class="provider-card" :class="{ collapsed: provider.collapsed }">
+          <!-- Card Header -->
+          <div class="card-header" @click="provider.collapsed && toggleProviderCollapse(provider)">
+            <div class="card-title" @click.stop="toggleProviderCollapse(provider)" style="cursor: pointer;">
+              <span class="expand-arrow" :class="{ expanded: !provider.collapsed }">▶</span>
+              <span>{{ provider.name || 'New Provider' }}</span>
+              <span class="settings-icon" @click.stop="editProviderName(provider)">⚙️</span>
+            </div>
+            <!-- Collapsed Summary -->
+            <div v-if="provider.collapsed" class="card-summary">
+              <div class="summary-item">
+                <span class="status-dot" :class="{ active: provider.enabled !== false }"></span>
+                <span>{{ provider.enabled !== false ? t.enabled : t.disabled }}</span>
+              </div>
+              <div class="summary-item">🏷️ {{ getProviderTypeLabel(provider.type) }}</div>
+              <div class="summary-item">🤖 {{ provider.models.length }} {{ t.models }}</div>
+              <div class="summary-item" v-if="provider.baseUrl">🔗 {{ getHostname(provider.baseUrl) }}</div>
+            </div>
+            <div v-else style="display: flex; align-items: center; gap: 12px;">
+              <span style="font-size: 12px; color: var(--vscode-descriptionForeground);">🏷️ {{ getProviderTypeLabel(provider.type) }}</span>
+              <div class="toggle-switch" :class="{ active: provider.enabled !== false }" @click.stop="provider.enabled = !provider.enabled"></div>
+            </div>
+          </div>
+
+          <!-- Card Body (collapsible) -->
+          <div class="card-body" v-show="!provider.collapsed">
+          <!-- API Key -->
+          <div class="form-group">
+            <div class="form-label">
+              <span class="form-label-text">{{ t.apiKey }}</span>
+            </div>
+            <div class="input-wrapper">
+              <input :type="provider.showApiKey ? 'text' : 'password'" v-model="provider.apiKey" placeholder="sk-..." />
+              <button class="input-icon-btn" @click="provider.showApiKey = !provider.showApiKey">
+                {{ provider.showApiKey ? '🙈' : '👁️' }}
+              </button>
+              <button class="input-action-btn" @click="testApiKey(provider)">{{ t.test }}</button>
+            </div>
+            <div class="form-label-hint" style="margin-top: 4px; text-align: right;">{{ t.apiKeyHint }}</div>
+          </div>
+
+          <!-- Base URL -->
+          <div class="form-group">
+            <div class="form-label">
+              <span class="form-label-text">{{ t.apiUrl }}</span>
+            </div>
+            <div class="input-wrapper">
+              <input type="text" v-model="provider.baseUrl" placeholder="https://api.openai.com/v1" />
+              <button class="input-icon-btn" title="Configure">⚙️</button>
+            </div>
+          </div>
+
+          <!-- Models Section -->
+          <div class="models-section">
+            <div class="models-header">
+              <div class="models-title">
+                <span>{{ t.models }}</span>
+                <span class="models-count">{{ provider.models.length }}</span>
+                <button class="input-icon-btn" style="padding: 4px;" title="Search">🔍</button>
+              </div>
+              <button class="input-icon-btn" @click="fetchModels(provider)" title="Fetch models">🔄</button>
+            </div>
+            
+            <div class="model-tree" v-if="provider.models.length > 0">
+              <div class="model-group-header" @click="provider.modelsExpanded = !provider.modelsExpanded">
+                <span class="expand-icon" :class="{ expanded: provider.modelsExpanded !== false }">▶</span>
+                <span>models</span>
+              </div>
+              <div class="model-list" v-show="provider.modelsExpanded !== false">
+                <div v-for="(model, mIndex) in provider.models" :key="model.id" class="model-item">
+                  <div class="model-info">
+                    <div class="model-icon">🤖</div>
+                    <span class="model-name">{{ model.name || model.id }}</span>
+                  </div>
+                  <div class="model-actions">
+                    <button class="model-action-btn delete" @click="removeModel(provider, mIndex)" title="Remove">—</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else style="padding: 20px; text-align: center; color: var(--vscode-descriptionForeground); background: var(--input-bg); border-radius: 6px;">
+              {{ t.noModels }}
+            </div>
+          </div>
+
+          <!-- Card Footer -->
+          <div class="card-footer">
+            <button class="secondary" @click="openManageModal(provider)">
+              <span>☰</span> {{ t.manage }}
+            </button>
+            <button class="secondary" @click="openAddModelModal(provider)">
+              <span>+</span> {{ t.add }}
+            </button>
+            <button class="danger" style="margin-left: auto;" @click="removeProvider(index)">
+              {{ t.delete }}
+            </button>
+          </div>
+          </div><!-- end card-body -->
+        </div>
+      </transition-group>
+
+      <!-- Global Settings -->
+      <div class="global-settings" v-if="providers.length > 0">
+        <h3>{{ t.defaultSettings }}</h3>
+        <div class="form-group">
+          <label>{{ t.defaultProvider }}</label>
+          <select v-model="defaultProviderId" @change="onDefaultProviderChange">
+            <option value="">{{ t.selectProvider }}</option>
+            <option v-for="p in providers" :value="p.id">{{ p.name }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>{{ t.defaultModel }}</label>
+          <select v-model="defaultModel">
+            <option value="">{{ t.selectModel }}</option>
+            <option v-for="m in currentProviderModels" :value="m.id">{{ m.name || m.id }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>{{ t.commitLanguage }}</label>
+          <select v-model="language">
+            <option value="zh-CN">简体中文</option>
+            <option value="en-US">English</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">
+            <span class="form-label-text">{{ t.customPrompt }}</span>
+           <span class="form-label-hint">{{ t.customPromptHint }}</span>
+          </div>
+          <textarea 
+            v-model="customPrompt" 
+            :placeholder="t.customPromptPlaceholder"
+            style="width: 100%; min-height: 120px; padding: 10px 12px; background: var(--input-bg); color: var(--input-fg); border: 1px solid var(--input-border); border-radius: 4px; box-sizing: border-box; font-size: 13px; font-family: var(--vscode-editor-font-family, monospace); resize: vertical;"
+          ></textarea>
+          <div style="margin-top: 8px; font-size: 12px; color: var(--vscode-descriptionForeground);">
+            {{ t.workspaceRulesHint }} <code style="background: var(--input-bg); padding: 2px 6px; border-radius: 3px;">.ai-generate-commit-rules/</code> {{ t.workspaceRulesHint2 }} <code style="background: var(--input-bg); padding: 2px 6px; border-radius: 3px;">.md</code> {{ t.workspaceRulesHint3 }}
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <button @click="saveSettings" style="width: 150px;" :disabled="saving">
+          {{ saving ? t.saving : t.save }}
+        </button>
+      </div>
+
+      <!-- Add Model Modal -->
+      <div class="modal-overlay" v-if="showAddModelModal" @click.self="showAddModelModal = false">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>{{ t.addModel }}</h3>
+            <button class="modal-close" @click="showAddModelModal = false">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>{{ t.modelId }}</label>
+              <input type="text" v-model="newModel.id" :placeholder="t.modelIdPlaceholder" @input="autoFillModelName" />
+            </div>
+            <div class="form-group">
+              <label>{{ t.modelName }}</label>
+              <input type="text" v-model="newModel.name" placeholder="GPT-4" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="secondary" @click="showAddModelModal = false">{{ t.cancel }}</button>
+            <button @click="addModel">{{ t.add }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add Provider Modal -->
+      <div class="modal-overlay" v-if="showAddProviderModal" @click.self="showAddProviderModal = false">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>{{ t.addProviderTitle }}</h3>
+            <button class="modal-close" @click="showAddProviderModal = false">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>{{ t.providerType }} <span style="color: var(--vscode-errorForeground);">*</span></label>
+              <select v-model="newProvider.type" required>
+                <option value="" disabled>{{ t.providerTypePlaceholder }}</option>
+                <option v-for="pt in providerTypes" :key="pt.value" :value="pt.value">{{ pt.label }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>{{ t.providerName }} <span style="color: var(--vscode-errorForeground);">*</span></label>
+              <input type="text" v-model="newProvider.name" :placeholder="t.providerNamePlaceholder" required />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="secondary" @click="showAddProviderModal = false">{{ t.cancel }}</button>
+            <button @click="confirmAddProvider">{{ t.add }}</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manage Models Modal -->
+      <div class="modal-overlay" v-if="showManageModal" @click.self="showManageModal = false">
+        <div class="modal-content manage-modal">
+          <div class="modal-header">
+            <h3>{{ manageProvider?.name || '' }} {{ t.manageModels }}</h3>
+            <button class="modal-close" @click="showManageModal = false">×</button>
+          </div>
+          <div class="modal-body">
+            <!-- Search Bar -->
+            <div class="manage-search">
+              <div class="search-input">
+                <span class="search-icon">🔍</span>
+                <input type="text" v-model="manageSearch" :placeholder="t.searchModels" />
+              </div>
+              <div class="action-btns">
+                <button @click="toggleManageSort">⇅</button>
+                <button @click="refreshManageModels">🔄</button>
+              </div>
+            </div>
+            
+
+            
+            <!-- Loading State -->
+            <div v-if="manageLoading" class="manage-loading">
+              <div class="spinner"></div>
+              <span>{{ t.fetchingModels }}</span>
+            </div>
+            
+            <!-- Model List -->
+            <div v-else class="manage-model-list">
+              <div v-for="(group, groupName) in filteredManageModels" :key="groupName" class="manage-group">
+                <div class="manage-group-header" @click="toggleManageGroup(groupName)">
+                  <div class="group-left">
+                    <span class="expand-icon" :class="{ expanded: manageExpandedGroups[groupName] }">▶</span>
+                    <span>{{ groupName }}</span>
+                    <span class="group-count">{{ group.length }}</span>
+                  </div>
+                  <span class="group-add" @click.stop="addGroupModels(groupName, group)" :title="t.addAll">+</span>
+                </div>
+                <div v-show="manageExpandedGroups[groupName]">
+                  <div v-for="model in group" :key="model.id" class="manage-model-item">
+                    <div class="model-logo">◆</div>
+                    <div class="model-content">
+                      <span class="model-title">{{ model.name || model.id }}</span>
+                    </div>
+                    <span 
+                      class="model-add-btn" 
+                      :class="{ added: isModelAdded(model.id) }"
+                      @click="toggleManageModel(model)"
+                      :title="isModelAdded(model.id) ? t.added : t.add"
+                    >{{ isModelAdded(model.id) ? '✓' : '+' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-if="Object.keys(filteredManageModels).length === 0" style="padding: 40px; text-align: center; color: var(--vscode-descriptionForeground);">
+                {{ t.noMatchingModels }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const { createApp, ref, reactive, computed, onMounted } = Vue;
+      const vscode = acquireVsCodeApi();
+
+      // 国际化文本
+      const i18n = {
+        'zh-CN': {
+          title: 'AI 提供者配置',
+          addProvider: '添加提供者',
+          noProviders: '暂无提供者配置，点击"添加提供者"开始。',
+          enabled: '已启用',
+          disabled: '已禁用',
+          models: '模型',
+          apiKey: 'API 密钥',
+          apiKeyHint: '多个密钥使用逗号或空格分隔',
+          apiUrl: 'API 地址',
+          test: '检测',
+          manage: '管理',
+          add: '添加',
+          delete: '删除',
+          cancel: '取消',
+          save: '保存设置',
+          saving: '保存中...',
+          noModels: '暂无模型配置',
+          defaultSettings: '默认设置',
+          defaultProvider: '默认提供者',
+          defaultModel: '默认模型',
+          selectProvider: '-- 选择提供者 --',
+          selectModel: '-- 选择模型 --',
+          commitLanguage: '提交信息语言',
+          customPrompt: '自定义提示词',
+          customPromptHint: '优先级：工作区规则 > 自定义提示词 > 系统提示词',
+          customPromptPlaceholder: '输入额外的提交信息生成规则，例如：\n- 提交信息使用中文\n- 类型使用 feat/fix/docs 等\n- 描述要简洁明了',
+          workspaceRulesHint: '💡 工作区规则：在项目根目录创建',
+          workspaceRulesHint2: '目录，添加',
+          workspaceRulesHint3: '文件即可，工作区规则优先级高于自定义提示词。',
+          addModel: '添加模型',
+          modelId: '模型 ID',
+          modelIdPlaceholder: 'gpt-4, claude-3-opus, etc.',
+          modelName: '模型名称 (可选)',
+          addProviderTitle: '添加提供者',
+          providerType: '提供者类型',
+          providerTypePlaceholder: '-- 请选择 --',
+          providerName: '提供者名称',
+          providerNamePlaceholder: '输入提供者名称',
+          manageModels: '模型',
+          searchModels: '搜索模型 ID 或名称',
+          fetchingModels: '正在获取模型列表...',
+          noMatchingModels: '没有找到匹配的模型',
+          added: '已添加',
+          addAll: '添加全部',
+          groupAdded: '组的模型',
+          saveSuccess: '保存成功！',
+          saveFailed: '保存失败: ',
+          fetchFailed: '获取模型失败: ',
+          sendFailed: '发送失败: ',
+          configSaved: '配置已保存',
+          selectProviderType: '请选择提供者类型',
+          enterProviderName: '请输入提供者名称',
+          providerExists: '提供者名称已存在',
+          enterProviderNamePrompt: '输入提供者名称:',
+          uiLanguageLabel: '界面语言',
+        },
+        'en': {
+          title: 'AI Providers Configuration',
+          addProvider: 'Add New Provider',
+          noProviders: 'No providers configured. Click "Add New Provider" to get started.',
+          enabled: 'Enabled',
+          disabled: 'Disabled',
+          models: 'Models',
+          apiKey: 'API Key',
+          apiKeyHint: 'Separate multiple keys with commas or spaces',
+          apiUrl: 'API URL',
+          test: 'Test',
+          manage: 'Manage',
+          add: 'Add',
+          delete: 'Delete',
+          cancel: 'Cancel',
+          save: 'Save Settings',
+          saving: 'Saving...',
+          noModels: 'No models configured',
+          defaultSettings: 'Default Settings',
+          defaultProvider: 'Default Provider',
+          defaultModel: 'Default Model',
+          selectProvider: '-- Select Provider --',
+          selectModel: '-- Select Model --',
+          commitLanguage: 'Commit Message Language',
+          customPrompt: 'Custom Prompt',
+          customPromptHint: 'Priority: Workspace rules > Custom prompt > System prompt',
+          customPromptPlaceholder: 'Enter additional rules for commit message generation, e.g.:\n- Use English for commit messages\n- Use feat/fix/docs for types\n- Keep descriptions concise',
+          workspaceRulesHint: '💡 Workspace rules: Create',
+          workspaceRulesHint2: 'directory in project root, add',
+          workspaceRulesHint3: 'files. Workspace rules have higher priority than custom prompt.',
+          addModel: 'Add Model',
+          modelId: 'Model ID',
+          modelIdPlaceholder: 'gpt-4, claude-3-opus, etc.',
+          modelName: 'Model Name (optional)',
+          addProviderTitle: 'Add Provider',
+          providerType: 'Provider Type',
+          providerTypePlaceholder: '-- Select --',
+          providerName: 'Provider Name',
+          providerNamePlaceholder: 'Enter provider name',
+          manageModels: 'Models',
+          searchModels: 'Search model ID or name',
+          fetchingModels: 'Fetching model list...',
+          noMatchingModels: 'No matching models found',
+          added: 'Added',
+          addAll: 'Add all',
+          groupAdded: 'group models',
+          saveSuccess: 'Saved successfully!',
+          saveFailed: 'Save failed: ',
+          fetchFailed: 'Failed to fetch models: ',
+          sendFailed: 'Send failed: ',
+          configSaved: 'Configuration saved',
+          selectProviderType: 'Please select provider type',
+          enterProviderName: 'Please enter provider name',
+          providerExists: 'Provider name already exists',
+          enterProviderNamePrompt: 'Enter provider name:',
+          uiLanguageLabel: 'UI Language',
+        }
+      };
+
+      createApp({
+        setup() {
+          const providers = ref([]);
+          const defaultProviderId = ref("");
+          const defaultModel = ref("");
+          const language = ref("zh-CN");
+          const customPrompt = ref("");
+          const uiLanguage = ref("en");
+          const showAddModelModal = ref(false);
+          const currentEditingProvider = ref(null);
+          const toast = reactive({ show: false, message: "", type: "success" });
+          
+          // 国际化函数
+          const t = computed(() => {
+            const lang = uiLanguage.value.startsWith('zh') ? 'zh-CN' : 'en';
+            return i18n[lang];
+          });
+          
+          // Manage Modal State
+          const showManageModal = ref(false);
+          const manageProvider = ref(null);
+          const manageSearch = ref("");
+          const manageLoading = ref(false);
+          const manageModels = ref([]);
+          const manageExpandedGroups = reactive({});
+          const manageSortAsc = ref(true);
+
+          function showToast(message, type = "success") {
+            toast.show = true;
+            toast.message = message;
+            toast.type = type;
+            setTimeout(() => { toast.show = false; }, 3000);
+          }
+          
+          function getT() {
+            const lang = uiLanguage.value.startsWith('zh') ? 'zh-CN' : 'en';
+            return i18n[lang];
+          }
+          
+          const newModel = reactive({
+            id: "",
+            name: ""
+          });
+
+          const currentProviderModels = computed(() => {
+            const provider = providers.value.find(p => p.id === defaultProviderId.value);
+            return provider?.models || [];
+          });
+
+          onMounted(() => {
+            window.addEventListener("message", (event) => {
+              const message = event.data;
+              if (message.command === "config-data") {
+                providers.value = (message.data.providers || []).map(p => ({
+                  ...p,
+                  // Normalize models to AIModel objects
+                  models: (p.models || []).map(m => typeof m === 'string' ? { id: m } : { id: m.id, name: m.name, group: m.group }),
+                  enabled: p.enabled !== false,
+                  showApiKey: false,
+                  modelsExpanded: true,
+                  collapsed: true // 默认折叠
+                }));
+                defaultProviderId.value = message.data.defaultProviderId || "";
+                defaultModel.value = message.data.defaultModel || "";
+                language.value = message.data.language || "zh-CN";
+                customPrompt.value = message.data.customPrompt || "";
+                // 如果系统语言以 zh 开头则使用中文，否则默认英文
+                const sysLang = message.data.uiLanguage || "en";
+                uiLanguage.value = sysLang.startsWith("zh") ? "zh-CN" : "en";
+                // 从后端获取 providerTypes
+                if (message.data.providerTypes) {
+                  providerTypes.value = message.data.providerTypes.map(type => ({
+                    value: type,
+                    label: getProviderTypeLabel(type)
+                  }));
+                }
+              } else if (message.command === "fetch-success") {
+                const provider = providers.value.find(p => p.id === message.data.providerId);
+                if (message.data.forManage) {
+                  // For manage modal
+                  manageModels.value = message.data.models.map(m => ({
+                    id: m.id,
+                    name: m.name,
+                    group: m.group
+                  }));
+                  manageLoading.value = false;
+                } else if (provider) {
+                  provider.models = message.data.models.map(m => ({
+                    id: m.id,
+                    name: m.name,
+                    group: m.group
+                  }));
+                }
+              } else if (message.command === "fetch-error") {
+                if (message.data?.forManage) {
+                  manageLoading.value = false;
+                  showToast(getT().fetchFailed + message.error, "error");
+                } else {
+                  showToast(getT().fetchFailed + message.error, "error");
+                }
+              } else if (message.command === "save-success") {
+                saving.value = false;
+                showToast(getT().saveSuccess, "success");
+              } else if (message.command === "save-error") {
+                saving.value = false;
+                showToast(getT().saveFailed + message.error, "error");
+              }
+            });
+            vscode.postMessage({ command: "get-config" });
+          });
+
+          // Add Provider Modal State
+          const showAddProviderModal = ref(false);
+          const newProvider = reactive({
+            name: "",
+            type: "openai-compatible"
+          });
+          
+          const providerTypes = ref([]);
+
+          function addProvider() {
+            newProvider.name = "";
+            newProvider.type = "openai-compatible";
+            showAddProviderModal.value = true;
+          }
+          
+          function confirmAddProvider() {
+            if (!newProvider.type) {
+              showToast(getT().selectProviderType, "error");
+              return;
+            }
+            if (!newProvider.name?.trim()) {
+              showToast(getT().enterProviderName, "error");
+              return;
+            }
+            const trimmedName = newProvider.name.trim();
+            if (providers.value.some(p => p.name === trimmedName)) {
+              showToast(getT().providerExists, "error");
+              return;
+            }
+            providers.value.push({
+              id: "provider-" + Date.now(),
+              name: newProvider.name.trim(),
+              type: newProvider.type,
+              apiKey: "",
+              baseUrl: getDefaultBaseUrl(newProvider.type),
+              models: [],
+              enabled: true,
+              showApiKey: false,
+              modelsExpanded: true,
+              collapsed: false
+            });
+            showAddProviderModal.value = false;
+          }
+          
+          function getDefaultBaseUrl(type) {
+            const urls = {
+              "openai": "https://api.openai.com/v1",
+              "azure-openai": "https://{resource-name}.openai.azure.com",
+              "gemini": "https://generativelanguage.googleapis.com/v1beta",
+              "openai-compatible": "",
+              "anthropic": "https://api.anthropic.com/v1"
+            };
+            return urls[type] || "";
+          }
+
+          function toggleProviderCollapse(provider) {
+            provider.collapsed = !provider.collapsed;
+          }
+
+          function getHostname(url) {
+            try {
+              return new URL(url).hostname;
+            } catch {
+              return url;
+            }
+          }
+          
+          function getProviderTypeLabel(type) {
+            const labels = {
+              "openai": "OpenAI",
+              "azure-openai": "Azure OpenAI",
+              "openai-compatible": "OpenAI Compatible",
+              "gemini": "Gemini",
+              "anthropic": "Anthropic"
+            };
+            return labels[type] || type || '未知';
+          }
+
+          function removeProvider(index) {
+            const p = providers.value[index];
+            if (defaultProviderId.value === p.id) {
+              defaultProviderId.value = "";
+              defaultModel.value = "";
+            }
+            providers.value.splice(index, 1);
+          }
+
+          function editProviderName(provider) {
+            const newName = prompt(getT().enterProviderNamePrompt, provider.name);
+            if (newName) provider.name = newName;
+          }
+
+          function testApiKey(provider) {
+            vscode.postMessage({ command: "test-api-key", data: { providerId: provider.id } });
+          }
+
+          function fetchModels(provider) {
+            vscode.postMessage({ command: "fetch-models", data: provider });
+          }
+
+          function openAddModelModal(provider) {
+            currentEditingProvider.value = provider;
+            newModel.id = "";
+            newModel.name = "";
+            showAddModelModal.value = true;
+          }
+
+          function autoFillModelName() {
+            if (!newModel.id) {
+              newModel.name = "";
+              return;
+            }
+            // 将模型 ID 转换为友好名称
+            // 例如: gpt-4-turbo -> GPT-4 Turbo, claude-3-opus -> Claude 3 Opus
+            const id = newModel.id.trim();
+            const name = id
+              .split(/[-_]/)
+              .map(part => {
+                // 纯数字保持原样
+                if (/^\d+$/.test(part)) return part;
+                // 常见缩写大写
+                if (/^(gpt|api|ai|llm)$/i.test(part)) return part.toUpperCase();
+                // 首字母大写
+                return part.charAt(0).toUpperCase() + part.slice(1).toLowerCase();
+              })
+              .join(' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+            newModel.name = name;
+          }
+
+          function addModel() {
+            if (newModel.id && currentEditingProvider.value) {
+              currentEditingProvider.value.models.push({
+                id: newModel.id,
+                name: newModel.name || undefined
+              });
+              showAddModelModal.value = false;
+            }
+          }
+
+          function removeModel(provider, index) {
+            provider.models.splice(index, 1);
+          }
+
+          function openManageModal(provider) {
+            manageProvider.value = provider;
+            manageSearch.value = "";
+            showManageModal.value = true;
+            refreshManageModels();
+          }
+          
+          function refreshManageModels() {
+            manageLoading.value = true;
+            const p = manageProvider.value;
+            // 转换为普通对象，去除 Vue 响应式代理
+            const providerData = JSON.parse(JSON.stringify({
+              id: p.id,
+              name: p.name,
+              type: p.type,
+              apiKey: p.apiKey,
+              baseUrl: p.baseUrl
+            }));
+            vscode.postMessage({ 
+              command: "fetch-models", 
+              data: providerData,
+              forManage: true
+            });
+          }
+          
+          const filteredManageModels = computed(() => {
+            let models = manageModels.value;
+            
+            // Search filter
+            if (manageSearch.value) {
+              const search = manageSearch.value.toLowerCase();
+              models = models.filter(m => 
+                m.id.toLowerCase().includes(search) || 
+                (m.name && m.name.toLowerCase().includes(search))
+              );
+            }
+            
+            // Sort
+            models = [...models].sort((a, b) => {
+              const nameA = (a.name || a.id).toLowerCase();
+              const nameB = (b.name || b.id).toLowerCase();
+              return manageSortAsc.value ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+            });
+            
+            // Group by provider/group
+            const groups = {};
+            models.forEach(m => {
+              const groupName = m.group || 'other';
+              if (!groups[groupName]) groups[groupName] = [];
+              groups[groupName].push(m);
+            });
+            
+            // Initialize expanded state for new groups
+            Object.keys(groups).forEach(g => {
+              if (manageExpandedGroups[g] === undefined) {
+                manageExpandedGroups[g] = true;
+              }
+            });
+            
+            return groups;
+          });
+          
+          function toggleManageGroup(groupName) {
+            manageExpandedGroups[groupName] = !manageExpandedGroups[groupName];
+          }
+          
+          function toggleManageSort() {
+            manageSortAsc.value = !manageSortAsc.value;
+          }
+          
+          function isModelAdded(modelId) {
+            return manageProvider.value?.models.some(m => m.id === modelId);
+          }
+          
+          function toggleManageModel(model) {
+            if (!manageProvider.value) return;
+            const idx = manageProvider.value.models.findIndex(m => m.id === model.id);
+            if (idx >= 0) {
+              manageProvider.value.models.splice(idx, 1);
+            } else {
+              manageProvider.value.models.push({
+                id: model.id,
+                name: model.name,
+                group: model.group
+              });
+            }
+          }
+          
+          function addGroupModels(groupName, models) {
+            if (!manageProvider.value) return;
+            models.forEach(model => {
+              if (!isModelAdded(model.id)) {
+                manageProvider.value.models.push({
+                  id: model.id,
+                  name: model.name,
+                  group: model.group
+                });
+              }
+            });
+            const lang = uiLanguage.value.startsWith('zh') ? 'zh-CN' : 'en';
+            const msg = lang === 'zh-CN' ? `已添加 ${groupName} 组的模型` : `Added ${groupName} ${getT().groupAdded}`;
+            showToast(msg, "success");
+          }
+
+          function onDefaultProviderChange() {
+            const provider = providers.value.find(p => p.id === defaultProviderId.value);
+            defaultModel.value = provider?.models?.[0]?.id || "";
+          }
+
+          const saving = ref(false);
+
+          function saveSettings() {
+            saving.value = true;
+            const data = providers.value.map(p => ({
+              id: p.id,
+              name: p.name,
+              type: p.type,
+              apiKey: p.apiKey,
+              baseUrl: p.baseUrl,
+              models: p.models.map(m => ({
+                id: m.id,
+                name: m.name || null,
+                group: m.group || null
+              })),
+              enabled: p.enabled
+            }));
+            try {
+              // 使用 JSON.parse/stringify 去除 Vue 响应式代理
+              const payload = JSON.parse(JSON.stringify({
+                command: "save-config",
+                data: { 
+                  providers: data, 
+                  defaultProviderId: defaultProviderId.value, 
+                  defaultModel: defaultModel.value,
+                  language: language.value,
+                  customPrompt: customPrompt.value
+                }
+              }));
+              vscode.postMessage(payload);
+            } catch (e) {
+              saving.value = false;
+              showToast(getT().sendFailed + e.message, "error");
+              return;
+            }
+            // 1秒后如果没收到响应，显示已发送
+            setTimeout(() => {
+              if (saving.value) {
+                saving.value = false;
+                showToast(getT().configSaved, "success");
+              }
+            }, 1000);
+          }
+
+          return {
+            providers, defaultProviderId, defaultModel, language, customPrompt, currentProviderModels,
+            showAddModelModal, newModel,
+            currentEditingProvider, toast, saving, t, uiLanguage,
+            addProvider, removeProvider, editProviderName, testApiKey, fetchModels,
+            openAddModelModal, addModel, removeModel, autoFillModelName,
+            openManageModal, onDefaultProviderChange, saveSettings, showToast,
+            toggleProviderCollapse, getHostname, getProviderTypeLabel,
+            // Manage modal
+            showManageModal, manageProvider, manageSearch, manageLoading,
+            manageModels, manageExpandedGroups, filteredManageModels, manageSortAsc,
+            toggleManageGroup, toggleManageSort, isModelAdded, toggleManageModel,
+            addGroupModels, refreshManageModels,
+            // Add Provider modal
+            showAddProviderModal, newProvider, providerTypes, confirmAddProvider, getProviderTypeLabel
+          };
+        }
+      }).mount("#app");
+    </script>
+  </body>
+</html>
