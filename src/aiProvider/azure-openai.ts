@@ -23,7 +23,7 @@ export class AzureOpenAIAdapter implements AIProviderAdapter {
       throw new Error("Cannot fetch models without a base URL.");
     }
 
-    // Azure OpenAI 使用不同的端点格式: /openai/deployments?api-version=xxx
+    // Azure OpenAI 1使用不同的端点格式: /openai/deployments?api-version=xxx
     const baseUrl = provider.baseUrl.replace(/\/$/, "");
     const url = `${baseUrl}/deployments?api-version=2024-02-01`;
 

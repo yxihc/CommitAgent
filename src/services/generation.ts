@@ -51,15 +51,42 @@ export async function generateCommitMessageStream(
   const model = AIManager.createModel(provider, modelId);
 
   try {
-    const result = await streamText({
+    const result = streamText({
       model: model,
       prompt: prompt,
     });
 
     let fullText = "";
-    for await (const textPart of result.textStream) {
-      fullText += textPart;
-      onChunk(textPart);
+    let streamError: Error | null = null;
+    
+    // 使用 fullStream 处理带思考模型的响应
+    for await (const part of result.fullStream) {
+      if (part.type === "text-delta") {
+        fullText += part.text;
+        onChunk(part.text);
+      } else if (part.type === "error") {
+        const errMsg = part.error instanceof Error 
+          ? part.error.message 
+          : JSON.stringify(part.error);
+        Logger.log(`Stream error: ${errMsg}`);
+        streamError = part.error instanceof Error 
+          ? part.error 
+          : new Error(errMsg);
+      }
+    }
+    
+    if (streamError) {
+      throw streamError;
+    }
+
+    // 如果 fullStream 没有文本，尝试从 result.text 获取
+    if (!fullText) {
+      Logger.log("No text from fullStream, trying result.text...");
+      const finalText = await result.text;
+      if (finalText) {
+        fullText = finalText;
+        onChunk(finalText);
+      }
     }
 
     if (!fullText) {
