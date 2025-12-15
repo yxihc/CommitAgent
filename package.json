@@ -19,6 +19,11 @@
         "icon": "$(sparkle)"
       },
       {
+        "command": "ai-generate-commit.stopGenerate",
+        "title": "Stop Generate",
+        "icon": "$(debug-stop)"
+      },
+      {
         "command": "ai-generate-commit.selectAndGenerate",
         "title": "Select Model & Generate Commit",
         "icon": "$(list-selection)"
@@ -37,15 +42,21 @@
       "scm/title": [
         {
           "command": "ai-generate-commit.generate",
-          "group": "navigation"
+          "group": "navigation@1",
+          "when": "!ai-generate-commit.isGenerating"
+        },
+        {
+          "command": "ai-generate-commit.stopGenerate",
+          "group": "navigation@1",
+          "when": "ai-generate-commit.isGenerating"
         },
         {
           "command": "ai-generate-commit.selectAndGenerate",
-          "group": "navigation"
+          "group": "navigation@2"
         },
         {
           "command": "ai-generate-commit.configure",
-          "group": "navigation"
+          "group": "navigation@3"
         }
       ]
     },

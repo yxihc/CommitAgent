@@ -4,6 +4,7 @@ import { localize } from "../utils/i18n";
 import { getDiff } from "../utils/git";
 import { Logger } from "../utils/logger";
 import { generateCommitMessageStream } from "./generation";
+import { GenerationState } from "./generation-state";
 
 /**
  * 处理生成提交信息的逻辑
@@ -14,11 +15,15 @@ export async function generateCommitMessage(
   repo: Repository,
   options?: { providerId?: string; modelId?: string }
 ): Promise<void> {
-  // 获取当前输入框中的文本
-  const currentText = repo.inputBox.value;
+  // 如果正在生成中，不重复执行
+  if (GenerationState.isGenerating) {
+    return;
+  }
+
+  // 开始生成，获取取消令牌
+  const cancellationToken = GenerationState.start();
 
   // 在源代码管理 (Source Control) 面板显示进度条
-  // location: vscode.ProgressLocation.SourceControl 指定进度条显示在 SCM 面板顶部
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.SourceControl,
@@ -79,14 +84,23 @@ export async function generateCommitMessage(
             accumulatedMessage += chunk;
             repo.inputBox.value = accumulatedMessage;
           },
-          options
+          options,
+          cancellationToken
         );
 
         Logger.log("Generated Commit Message:");
         Logger.log(accumulatedMessage);
       } catch (error: any) {
+        // 用户取消时不显示错误
+        if (error instanceof vscode.CancellationError) {
+          Logger.log("Generation cancelled by user.");
+          return;
+        }
         Logger.log(`Error: ${error.message}`);
         vscode.window.showErrorMessage(error.message);
+      } finally {
+        // 无论成功、失败还是取消，都重置状态
+        GenerationState.reset();
       }
     }
   );

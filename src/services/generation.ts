@@ -1,3 +1,4 @@
+import * as vscode from "vscode";
 import { streamText } from "ai";
 import { AIManager } from "./ai-manager";
 import { PromptUtils } from "../utils/prompt";
@@ -7,7 +8,8 @@ import { localize } from "../utils/i18n";
 export async function generateCommitMessageStream(
   diff: string,
   onChunk: (chunk: string) => void,
-  options?: { providerId?: string; modelId?: string }
+  options?: { providerId?: string; modelId?: string },
+  cancellationToken?: vscode.CancellationToken
 ): Promise<string> {
   const config = AIManager.getConfig();
   // Use existing language setting or default to zh-CN
@@ -47,13 +49,13 @@ export async function generateCommitMessageStream(
     `Generating commit message using Provider: ${provider.name}, Model: ${modelId}, Language: ${language}`
   );
 
-  const prompt = PromptUtils.getPrompt(language, diff);
+  const systemPrompt = PromptUtils.getFinllyPrompt(language);
   const model = AIManager.createModel(provider, modelId);
-
   try {
     const result = streamText({
       model: model,
-      prompt: prompt,
+      system: systemPrompt,
+      prompt: diff,
     });
 
     let fullText = "";
@@ -61,6 +63,12 @@ export async function generateCommitMessageStream(
 
     // 使用 fullStream 处理带思考模型的响应
     for await (const part of result.fullStream) {
+      // 检查是否已取消
+      if (cancellationToken?.isCancellationRequested) {
+        Logger.log("Generation cancelled by user.");
+        throw new vscode.CancellationError();
+      }
+
       if (part.type === "reasoning-delta") {
         Logger.log(`[Reasoning] ${part.text}`);
       } else if (part.type === "text-delta") {

@@ -24,22 +24,23 @@ export class OpenAIAdapter implements AIProviderAdapter {
     const baseUrl = provider.baseUrl || "https://api.openai.com/v1";
     const url = `${baseUrl.replace(/\/$/, "")}/models`;
 
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${provider.apiKey}` },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch models: ${response.statusText}`);
+    try {
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${provider.apiKey}` },
+      });
+      const data = (await response.json()) as any;
+      if (data.data && Array.isArray(data.data)) {
+        return data.data.map((m: any) => ({
+          id: m.id,
+          name: m.name || m.id,
+          group: m.group,
+        }));
+      } else {
+        throw new Error(JSON.stringify(data));
+      }
+    } catch (error: any) {
+      // 可以在这里做错误上报、显示用户提示等
+      throw error; // 如果调用者也需要处理，可以重新抛出
     }
-
-    const data = (await response.json()) as any;
-    if (data.data && Array.isArray(data.data)) {
-      return data.data.map((m: any) => ({
-        id: m.id,
-        name: m.name || m.id,
-        group: m.group,
-      }));
-    }
-    return [];
   }
 }

@@ -3,6 +3,7 @@ import { handleGenerate } from "./generate";
 import { handleSelectAndGenerate } from "./select-and-generate";
 import { handleFetchModels } from "./fetch-models";
 import { SettingsPanel } from "../webview/settings-panel";
+import { GenerationState } from "../services/generation-state";
 
 interface CommandDefinition {
   id: string;
@@ -19,6 +20,10 @@ export function registerCommands(
     {
       id: "ai-generate-commit.generate",
       handler: handleGenerate,
+    },
+    {
+      id: "ai-generate-commit.stopGenerate",
+      handler: () => GenerationState.stop(),
     },
     {
       id: "ai-generate-commit.selectAndGenerate",
