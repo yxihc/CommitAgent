@@ -2,9 +2,15 @@
   "name": "commitagent",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.0.1",
+  "version": "0.0.2",
+  "publisher": "CommitAgent",
+  "icon": "logo.png",
   "engines": {
     "vscode": "^1.90.0"
+  },
+   "repository": {
+    "type": "git",
+    "url": "https://github.com/yxihc/CommitAgent.git"
   },
   "categories": [
     "Other"
