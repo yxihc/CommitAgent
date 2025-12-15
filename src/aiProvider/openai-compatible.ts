@@ -1,17 +1,23 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { AIProvider, AIModel } from "../types/config";
 import { AIProviderAdapter } from "./types";
-
+import { Logger } from "../utils/logger";
 export class OpenAICompatibleAdapter implements AIProviderAdapter {
   createModel(provider: AIProvider, modelId: string) {
     if (!provider.baseUrl) {
       throw new Error("OpenAI Compatible provider requires a baseUrl.");
     }
 
+    // Validate URL format
+    const baseUrl = provider.baseUrl.trim();
+    // const baseUrl = "https://api-inference.modelscope.cn/v1";
+    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+      throw new Error("Base URL must start with http:// or https://");
+    }
     const openaiCompatible = createOpenAICompatible({
       name: "openai-compatible",
       apiKey: provider.apiKey,
-      baseURL: provider.baseUrl,
+      baseURL: baseUrl,
     });
     return openaiCompatible(modelId);
   }

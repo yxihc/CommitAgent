@@ -58,23 +58,26 @@ export async function generateCommitMessageStream(
 
     let fullText = "";
     let streamError: Error | null = null;
-    
+
     // 使用 fullStream 处理带思考模型的响应
     for await (const part of result.fullStream) {
-      if (part.type === "text-delta") {
+      if (part.type === "reasoning-delta") {
+        Logger.log(`[Reasoning] ${part.text}`);
+      } else if (part.type === "text-delta") {
+        Logger.log(`[Text] ${part.text}`);
         fullText += part.text;
         onChunk(part.text);
       } else if (part.type === "error") {
-        const errMsg = part.error instanceof Error 
-          ? part.error.message 
-          : JSON.stringify(part.error);
+        const errMsg =
+          part.error instanceof Error
+            ? part.error.message
+            : JSON.stringify(part.error);
         Logger.log(`Stream error: ${errMsg}`);
-        streamError = part.error instanceof Error 
-          ? part.error 
-          : new Error(errMsg);
+        streamError =
+          part.error instanceof Error ? part.error : new Error(errMsg);
       }
     }
-    
+
     if (streamError) {
       throw streamError;
     }

@@ -15,7 +15,10 @@ export class SettingsPanel {
 
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
-    this._panel.webview.html = getWebviewContent(this._panel.webview, this._extensionUri);
+    this._panel.webview.html = getWebviewContent(
+      this._panel.webview,
+      this._extensionUri
+    );
 
     this._setWebviewMessageListener(this._panel.webview);
   }
@@ -61,10 +64,7 @@ export class SettingsPanel {
   private _setWebviewMessageListener(webview: vscode.Webview) {
     webview.onDidReceiveMessage(
       async (message: any) => {
-        const command = message.command;
-        const text = message.text;
-
-        switch (command) {
+        switch (message.command) {
           case "get-config":
             this._sendConfig(webview);
             break;
@@ -74,8 +74,13 @@ export class SettingsPanel {
               webview.postMessage({ command: "save-success" });
               vscode.window.showInformationMessage("Configuration saved!");
             } catch (error: any) {
-              webview.postMessage({ command: "save-error", error: error.message });
-              vscode.window.showErrorMessage("Failed to save: " + error.message);
+              webview.postMessage({
+                command: "save-error",
+                error: error.message,
+              });
+              vscode.window.showErrorMessage(
+                "Failed to save: " + error.message
+              );
             }
             break;
           case "fetch-models":
@@ -123,27 +128,35 @@ export class SettingsPanel {
     );
   }
 
-  private async _fetchModels(webview: vscode.Webview, provider: any, forManage?: boolean) {
+  private async _fetchModels(
+    webview: vscode.Webview,
+    provider: any,
+    forManage?: boolean
+  ) {
     try {
       const models = await AIManager.fetchModels(provider);
       webview.postMessage({
         command: "fetch-success",
         data: {
-            providerId: provider.id,
-            models: models,
-            forManage: !!forManage
-        }
+          providerId: provider.id,
+          models: models,
+          forManage: !!forManage,
+        },
       });
       if (!forManage) {
-        vscode.window.showInformationMessage(`Fetched ${models.length} models for ${provider.name}`);
+        vscode.window.showInformationMessage(
+          `Fetched ${models.length} models for ${provider.name}`
+        );
       }
     } catch (error: any) {
       webview.postMessage({
         command: "fetch-error",
         data: { forManage: !!forManage },
-        error: error.message
+        error: error.message,
       });
-      vscode.window.showErrorMessage(`Failed to fetch models: ${error.message}`);
+      vscode.window.showErrorMessage(
+        `Failed to fetch models: ${error.message}`
+      );
     }
   }
 }

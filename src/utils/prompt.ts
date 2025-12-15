@@ -1,7 +1,8 @@
 import * as vscode from "vscode";
-import * as fs from "fs";
 import * as path from "path";
 import { Logger } from "./logger";
+import { FileUtils } from "./file";
+import { RULE_DIR_NAMES, WORKSPACE_PROMPT_FILE } from "../app-config";
 
 export class PromptUtils {
   private static getWorkspaceRules(): string {
@@ -10,35 +11,44 @@ export class PromptUtils {
       return "";
     }
 
-    let rulesContent = "";
-    const ruleDirNames = [
-      ".ai-generate-commit-rules",
-      ".ai-genrate-commit-rules",
-    ];
+    const allContents: string[] = [];
 
     for (const folder of workspaceFolders) {
-      for (const dirName of ruleDirNames) {
+      for (const dirName of RULE_DIR_NAMES) {
         const rulesDir = path.join(folder.uri.fsPath, dirName);
-        if (fs.existsSync(rulesDir) && fs.statSync(rulesDir).isDirectory()) {
-          try {
-            const files = fs.readdirSync(rulesDir);
-            const mdFiles = files.filter((file) => file.endsWith(".md"));
+        const contents = FileUtils.readFilesFromDir(rulesDir, ".md");
+        allContents.push(...contents);
+      }
+    }
 
-            for (const file of mdFiles) {
-              const filePath = path.join(rulesDir, file);
-              const content = fs.readFileSync(filePath, "utf-8");
-              if (content.trim()) {
-                rulesContent += `\n${content.trim()}\n`;
-              }
-            }
-          } catch (error) {
-            Logger.log(`Error reading rules from ${rulesDir}: ${error}`);
-          }
+    return allContents.length > 0 ? `\n${allContents.join("\n")}\n` : "";
+  }
+
+  /**
+   * 获取工作区 workspace.prompt.md 文件内容
+   */
+  public static getWorkspacePromptFile(): string {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) {
+      return "";
+    }
+
+    for (const folder of workspaceFolders) {
+      for (const dirName of RULE_DIR_NAMES) {
+        const promptPath = path.join(
+          folder.uri.fsPath,
+          dirName,
+          WORKSPACE_PROMPT_FILE
+        );
+        const content = FileUtils.readFile(promptPath);
+        if (content) {
+          Logger.log(`Found ${WORKSPACE_PROMPT_FILE} in ${dirName}`);
+          return content;
         }
       }
     }
 
-    return rulesContent;
+    return "";
   }
 
   /**
@@ -54,17 +64,12 @@ export class PromptUtils {
    * 获取系统内置提示词模板
    */
   private static getSystemPrompt(language: string): string {
-    try {
-      const promptDir = path.join(__dirname, "../../prompt");
-      const promptPath = path.join(promptDir, `${language}.md`);
+    const promptDir = path.join(__dirname, "../../prompt");
+    const promptPath = path.join(promptDir, `${language}.md`);
+    const content = FileUtils.readFile(promptPath);
 
-      if (fs.existsSync(promptPath)) {
-        return fs.readFileSync(promptPath, "utf-8");
-      }
-    } catch (error) {
-      Logger.log(
-        `Error reading prompt file for language ${language}: ${error}`
-      );
+    if (content) {
+      return content;
     }
 
     // Fallback default prompt

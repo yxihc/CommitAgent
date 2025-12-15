@@ -43,11 +43,6 @@ export function createModel(provider: AIProvider, modelId: string) {
  * 获取模型列表
  */
 export async function fetchModels(provider: AIProvider): Promise<AIModel[]> {
-  try {
-    const adapter = getAdapter(provider.type);
-    return await adapter.fetchModels(provider);
-  } catch (error: any) {
-    Logger.log(`Error fetching models: ${error.message}`);
-    throw error;
-  }
+  const adapter = getAdapter(provider.type);
+  return adapter.fetchModels(provider);
 }
