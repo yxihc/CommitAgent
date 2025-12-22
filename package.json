@@ -1,9 +1,9 @@
 {
-  "name": "commitagent",
+  "name": "commit-agent",
   "displayName": "%displayName%",
   "description": "%description%",
-  "version": "0.0.5",
-  "publisher": "CommitAgent",
+  "version": "0.0.6",
+  "publisher": "taopao",
   "icon": "logo.png",
   "engines": {
     "vscode": "^1.90.0"
